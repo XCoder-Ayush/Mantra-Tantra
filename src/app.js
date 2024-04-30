@@ -3,7 +3,6 @@ const app = express();
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const ServerConfig = require('./config/server.config');
-
 app.use(
   express.json({
     limit: '16kb',
@@ -26,4 +25,9 @@ app.use(
 
 app.use(express.static('public'));
 app.use(cookieParser());
+
+const apiRouter = require('./routes/routes');
+
+app.use('/api', apiRouter);
+
 module.exports = app;
