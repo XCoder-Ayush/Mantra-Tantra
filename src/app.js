@@ -3,6 +3,11 @@ const app = express();
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const ServerConfig = require('./config/server.config');
+const FAQ = require('./models/faq.model');
+const Query = require('./models/query.model');
+const Testimonial = require('./models/testimonial.model');
+const Mantralekhan = require('./models/mantralekhan.model');
+
 app.use(
   express.json({
     limit: '16kb',

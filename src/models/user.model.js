@@ -31,10 +31,12 @@ const User = sequelize.define(
     firstName: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: 'first_name',
     },
     lastName: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: 'last_name',
     },
     avatar: {
       type: DataTypes.STRING, // cloudinary url
@@ -68,11 +70,12 @@ const User = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+      field: 'mantra_chanted',
     },
   },
   {
     timestamps: true,
-    tableName: 'Users',
+    tableName: 'users',
     hooks: {
       beforeCreate: async (user, options) => {
         if (user.password) {
