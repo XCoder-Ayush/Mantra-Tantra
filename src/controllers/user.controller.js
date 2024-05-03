@@ -5,6 +5,9 @@ const uploadOnCloudinary = require('../utils/cloudinary.util');
 const ApiError = require('../utils/apiError.util');
 const ApiResponse = require('../utils/apiResponse.util');
 const { Op } = require('sequelize');
+const crypto = require('crypto');
+const RegToken = require('../models/regtoken.model');
+const sendEmail = require('../utils/nodemailer.util');
 
 const generateAccessToken = async (userId) => {
   try {
@@ -28,6 +31,109 @@ const generateAccessToken = async (userId) => {
     );
   }
 };
+
+function generateRandomRegistrationToken() {
+  const buffer = crypto.randomBytes(32);
+  const token = buffer.toString('hex');
+  return token;
+}
+
+const SendVerificationLinkToUser = asyncHandler(async (req, res) => {
+  const email = req.body.email;
+
+  // Case 1: Empty Email
+  if (!email) {
+    throw new ApiError(400, 'Email address is required.');
+  }
+
+  // Case 2: Invalid Format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new ApiError(400, 'Invalid email address format.');
+  }
+
+  // Case 3: Length
+  if (email.length > 320) {
+    throw new ApiError(400, 'Email address is too long.');
+  }
+
+  // Proceed With Verification
+  // Generate Token:
+  const token = generateRandomRegistrationToken();
+
+  // verificationLink contains frontend route:
+  const FrontendDomain = `http://localhost:3000`;
+  const verificationLink = `${FrontendDomain}/verify?token=${token}`;
+
+  console.log(verificationLink);
+
+  // Make an entry in Postgres:
+  // Or can i keep it in memory?
+
+  const expiresAt = new Date();
+  expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+  // Create entry in the database
+  try {
+    await RegToken.create({
+      regToken: token,
+      email: email,
+      expiresAt: expiresAt,
+    });
+  } catch (error) {
+    // Handle database insertion error
+    console.error('Error Creating Registration Token : ', error);
+    throw new ApiError(500, 'Internal Server Error');
+  }
+
+  // Use nodemailer util to send mail to this email.
+  await sendEmail(
+    email,
+    'Mantra Tantra | Verification Link',
+    `
+    <p>Please click the following link to verify your email:</p>
+    <p><a href="${verificationLink}">${verificationLink}</a></p>
+    `
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, 'Verification Link Sent Successfully.'));
+});
+
+const VerifyRegistrationToken = asyncHandler(async (req, res) => {
+  // When user clicks on emailed link, directed to the frontend page:
+  // From there the token is obtained and this api is hit:
+
+  const token = req.query.token;
+  console.log(token);
+
+  if (!token || token == null || token == undefined) {
+    throw new ApiError(403, 'Invalid Registration Token.');
+  }
+
+  // Verify From DB:
+  const regToken = await RegToken.findOne({
+    where: {
+      regToken: token,
+    },
+  });
+
+  if (regToken) {
+    // Check For Its Validity:
+    const currentTime = new Date();
+    if (regToken.expiresAt <= currentTime) {
+      throw new ApiError(403, 'Registration Token Expired.');
+    }
+  } else {
+    throw new ApiError(403, 'No Registration Token Found.');
+  }
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, regToken.email, 'Email Verification Successfull.')
+    );
+});
 
 const RegisterUser = asyncHandler(async (req, res) => {
   const { email, firstName, lastName, password, address, phone } = req.body;
@@ -163,4 +269,10 @@ const LogoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, 'User Logged Out'));
 });
 
-module.exports = { RegisterUser, LoginUser, LogoutUser };
+module.exports = {
+  RegisterUser,
+  LoginUser,
+  LogoutUser,
+  SendVerificationLinkToUser,
+  VerifyRegistrationToken,
+};

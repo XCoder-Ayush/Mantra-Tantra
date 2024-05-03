@@ -4,6 +4,13 @@ const UserController = require('../../../controllers/user.controller');
 const upload = require('../../../middlewares/multer.middleware');
 const AuthMiddleware = require('../../../middlewares/auth.middleware');
 
+userRouter
+  .route('/verify/email')
+  .post(UserController.SendVerificationLinkToUser);
+userRouter
+  .route('/verify/regtoken')
+  .post(UserController.VerifyRegistrationToken);
+
 userRouter.route('/register').post(
   upload.fields([
     {
