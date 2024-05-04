@@ -232,7 +232,7 @@ const LoginUser = asyncHandler(async (req, res) => {
       id: user.id,
     },
     attributes: {
-      exclude: ['password'],
+      exclude: ['password', 'id', 'updatedAt'],
     },
   });
 
