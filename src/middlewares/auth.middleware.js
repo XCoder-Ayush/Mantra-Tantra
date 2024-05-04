@@ -3,7 +3,7 @@ const asyncHandler = require('../utils/asyncHandler.util.js');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model.js');
 
-const AuthMiddleware = asyncHandler(async (req, _, next) => {
+const AuthMiddleware = asyncHandler(async (req, res, next) => {
   try {
     const token =
       req.cookies?.accessToken ||

@@ -232,7 +232,7 @@ const LoginUser = asyncHandler(async (req, res) => {
       id: user.id,
     },
     attributes: {
-      exclude: ['password', 'id', 'updatedAt'],
+      exclude: ['password', 'updatedAt'],
     },
   });
 
@@ -268,11 +268,144 @@ const LogoutUser = asyncHandler(async (req, res) => {
     .clearCookie('accessToken', options)
     .json(new ApiResponse(200, {}, 'User Logged Out'));
 });
+function generateRandomPassword() {
+  const length = Math.floor(Math.random() * (16 - 8 + 1)) + 8; // Random length between 8 and 16
+  const characters =
+    'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    password += characters.charAt(randomIndex);
+  }
+  return password;
+}
 
+const ForgotPassword = asyncHandler(async (req, res) => {
+  // This functionality can only be accessed when user is logged out.
+  const email = req.body.email;
+
+  // Case 1: Empty Email
+  if (!email) {
+    throw new ApiError(400, 'Email address is required.');
+  }
+
+  // Case 2: Invalid Format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new ApiError(400, 'Invalid email address format.');
+  }
+
+  // Case 3: Length
+  if (email.length > 320) {
+    throw new ApiError(400, 'Email address is too long.');
+  }
+
+  // Check if any user with this email exists or not
+  const user = await User.findOne({
+    where: {
+      email: email,
+    },
+  });
+
+  if (!user) {
+    throw new ApiError(400, 'User does not exist.');
+  }
+
+  const password = generateRandomPassword();
+
+  //Update in DB
+  const updatedUser = await user.update({
+    password: password,
+  });
+
+  // Send Email:
+  await sendEmail(
+    email,
+    'Mantra Tantra | New Password',
+    `
+    <p>This is your new password. Use this to login to the website.</p>
+    <p>Password : <strong>${password}</strong></p>
+    `
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, {}, 'Updated Password Sent To Mail Successfully.')
+    );
+});
+
+const ChangePassword = asyncHandler(async (req, res) => {
+  // This functionality can only be accessed when user is logged in.
+  // User needs to know his old password. Else avail forgot password functionality
+  const email = req.body.email;
+  const oldPassword = req.body.oldPassword;
+  const newPassword = req.body.newPassword;
+  if (
+    oldPassword == '' ||
+    newPassword == '' ||
+    oldPassword == undefined ||
+    newPassword == undefined ||
+    !oldPassword ||
+    !newPassword
+  ) {
+    throw new ApiError(400, 'Enter valid credentials');
+  }
+  // Password okay, check email.
+  if (!email) {
+    throw new ApiError(400, 'Email address is required.');
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new ApiError(400, 'Invalid email address format.');
+  }
+  if (email.length > 320) {
+    throw new ApiError(400, 'Email address is too long.');
+  }
+  const user = await User.findOne({
+    where: {
+      email: email,
+    },
+  });
+
+  if (!user) {
+    throw new ApiError(400, 'User does not exist.');
+  }
+
+  // Both okay.
+  const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+  if (!isPasswordValid) {
+    throw new ApiError(401, 'Old passwords does not match.');
+  }
+
+  await user.update(
+    { password: newPassword } // New password
+  );
+
+  const updatedUser = await User.findOne({
+    where: {
+      email: email,
+    },
+    attributes: {
+      exclude: ['password', 'updatedAt'],
+    },
+  });
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user: updatedUser,
+      },
+      'Password updated successfully.'
+    )
+  );
+});
 module.exports = {
   RegisterUser,
   LoginUser,
   LogoutUser,
   SendVerificationLinkToUser,
   VerifyRegistrationToken,
+  ForgotPassword,
+  ChangePassword,
 };
