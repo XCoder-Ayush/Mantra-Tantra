@@ -17,8 +17,7 @@ const User = sequelize.define(
   'User',
   {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: Sequelize.UUIDV4,
+      type: DataTypes.STRING,
       primaryKey: true,
     },
     email: {
@@ -28,15 +27,10 @@ const User = sequelize.define(
       lowercase: true,
       trim: true,
     },
-    firstName: {
+    fullName: {
       type: DataTypes.STRING,
       allowNull: false,
-      field: 'first_name',
-    },
-    lastName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      field: 'last_name',
+      field: 'full_name',
     },
     avatar: {
       type: DataTypes.STRING, // cloudinary url
@@ -44,21 +38,21 @@ const User = sequelize.define(
     },
     password: {
       type: DataTypes.STRING(60),
-      allowNull: false,
-      validate: {
-        notEmpty: true,
-      },
+      allowNull: true, // Allow null for now
+      defaultValue: null, // Set default value to null
     },
     address: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Allow null for now
+      defaultValue: null, // Set default value to null
     },
     phone: {
-      type: DataTypes.STRING(10), // Define phone number as a string with length 10
-      allowNull: false,
+      type: DataTypes.STRING(10),
+      allowNull: true, // Allow null for now
+      defaultValue: null, // Set default value to null
       unique: true,
       validate: {
-        len: [10, 10], // Ensure the length is exactly 10 characters
+        len: [10, 10], // Ensure the length is exactly 10 characters if provided
       },
     },
     niyam: {

@@ -400,6 +400,30 @@ const ChangePassword = asyncHandler(async (req, res) => {
     )
   );
 });
+
+const SignInWithGoogle = async (accessToken, refreshToken, profile, done) => {
+  console.log(profile);
+  try {
+    let user = await User.findByPk(profile.id);
+    console.log(accessToken);
+    console.log(refreshToken);
+    if (!user) {
+      const createdUser = await User.create({
+        id: profile.id,
+        fullName: profile.displayName,
+        email: profile.emails[0].value,
+        avatar: profile.photos[0].value,
+      });
+
+      console.log('New User Created ', createdUser);
+    }
+
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
+  }
+};
+
 module.exports = {
   RegisterUser,
   LoginUser,
@@ -408,4 +432,5 @@ module.exports = {
   VerifyRegistrationToken,
   ForgotPassword,
   ChangePassword,
+  SignInWithGoogle,
 };

@@ -15,7 +15,7 @@ const Mantralekhan = sequelize.define(
   'Mantralekhan',
   {
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       allowNull: false,
       primaryKey: true,
       references: {

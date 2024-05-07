@@ -24,7 +24,7 @@ const Testimonial = sequelize.define(
       allowNull: false,
     },
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       allowNull: false,
       references: {
         model: 'users', // This should match the table name of the User model
