@@ -1,5 +1,6 @@
-const { Sequelize, Model, DataTypes } = require('sequelize');
+const { Sequelize, DataTypes } = require('sequelize');
 const ServerConfig = require('../config/server.config');
+const User = require('./user.model');
 
 const sequelize = new Sequelize({
   database: ServerConfig.DB_NAME,
@@ -10,48 +11,40 @@ const sequelize = new Sequelize({
   dialect: 'postgres',
 });
 
-const Query = sequelize.define(
-  'Query',
+const Feedback = sequelize.define(
+  'Feedback',
   {
     id: {
       type: DataTypes.UUID,
       defaultValue: Sequelize.UUIDV4,
       primaryKey: true,
     },
-    subject: {
-      type: DataTypes.STRING(1000),
-      allowNull: false,
-      required: true,
-    },
-    content: {
-      type: DataTypes.STRING(1000),
-      allowNull: false,
-      required: true,
-    },
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      required: true,
+      references: {
+        model: User,
+        key: 'email',
+      },
     },
-    firstName: {
+    fullName: {
       type: DataTypes.STRING,
       allowNull: false,
-      field: 'first_name',
-      required: true,
+      field: 'full_name',
     },
-    lastName: {
-      type: DataTypes.STRING,
+    comment: {
+      type: DataTypes.STRING(1000),
       allowNull: false,
-      field: 'last_name',
-      required: true,
     },
   },
   {
-    tableName: 'queries',
+    tableName: 'feedbacks',
     timestamps: true,
   }
 );
 
-Query.sync();
+Feedback.belongsTo(User, { foreignKey: 'email', targetKey: 'email' });
 
-module.exports = Query;
+Feedback.sync();
+
+module.exports = Feedback;

@@ -7,7 +7,9 @@ mantralekhanRouter
   .route('/')
   .post(AuthMiddleware, MantralekhanController.PostMantralekhan);
 
-mantralekhanRouter.route('/today').get(MantralekhanController.GetTopUsersToday);
+mantralekhanRouter
+  .route('/today')
+  .get(MantralekhanController.GetTopUsersToday);
 
 mantralekhanRouter
   .route('/week')

@@ -1,5 +1,4 @@
 const asyncHandler = require('../utils/asyncHandler.util');
-const UserService = require('../services/user.service');
 const User = require('../models/user.model');
 const uploadOnCloudinary = require('../utils/cloudinary.util');
 const ApiError = require('../utils/apiError.util');
@@ -8,6 +7,10 @@ const { Op } = require('sequelize');
 const crypto = require('crypto');
 const RegToken = require('../models/regtoken.model');
 const sendEmail = require('../utils/nodemailer.util');
+const cloudinary = require('../config/cloudinary.config');
+const Mantralekhan = require('../models/mantralekhan.model');
+const moment = require('moment-timezone');
+const sequelize = require('sequelize');
 
 function generateRandomRegistrationToken() {
   const buffer = crypto.randomBytes(32);
@@ -167,7 +170,7 @@ const RegisterUser = asyncHandler(async (req, res) => {
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
   if (!avatar) {
-    throw new ApiError(400, 'Avatar file is required');
+    throw new ApiError(500, 'Internal Server Error');
   }
 
   const user = await User.create({
@@ -505,6 +508,177 @@ const InviteFriend = asyncHandler(async (req, res) => {
     throw new ApiError(500, 'Internal Server Error.');
   }
 });
+
+const UploadProfilePicture = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.body.id;
+    const user = await User.findByPk(userId);
+
+    const avatarLocalPath = req.files?.avatar[0]?.path;
+
+    if (!avatarLocalPath) {
+      throw new ApiError(400, 'Avatar file is required');
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+    if (!avatar) {
+      throw new ApiError(500, 'Internal Server Error');
+    }
+    console.log(avatar);
+
+    const newProfilePictureUrl = avatar.url;
+
+    const oldProfilePictureUrl = user.avatar;
+    console.log('HERE ', oldProfilePictureUrl);
+    // Delete the old profile picture from Cloudinary
+    if (oldProfilePictureUrl) {
+      const publicId = getPublicIdFromUrl(oldProfilePictureUrl);
+      console.log(publicId);
+      const resp = await cloudinary.uploader.destroy(publicId);
+      console.log(resp);
+    }
+
+    // Update user's profile picture URL with the new one
+    user.avatar = newProfilePictureUrl;
+    await user.save();
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, 'Profile Picture Updated Successfully.'));
+  } catch (error) {
+    console.error('Error Updating Profile Picture : ', error);
+    throw new ApiError(500, 'Internal Server Error.');
+  }
+});
+
+const getPublicIdFromUrl = (url) => {
+  // Example Cloudinary URL format: http://res.cloudinary.com/dgfljm0r3/image/upload/v1715449194/eexfoew5zppq4w7xenwy.png
+  const parts = url.split('/');
+  const publicIdIndex = parts.indexOf('upload') + 2;
+  let publicId = parts[publicIdIndex];
+  publicId = publicId.split('.')[0];
+  return publicId;
+};
+
+const UpdateUserDetails = asyncHandler(async (req, res) => {
+  const { id, address, niyam, phone } = req.body;
+
+  if (niyam < 0) {
+    throw new ApiError(
+      400,
+      'Niyam value should be greater than or equal to 0.'
+    );
+  }
+
+  if (phone && !/^\d{10}$/.test(phone)) {
+    throw new ApiError(400, 'Phone number should be 10 digits or empty.');
+  }
+
+  try {
+    const user = await User.findByPk(id);
+
+    if (!user) {
+      throw new ApiError(404, 'User not found.');
+    }
+    user.address = address;
+    user.niyam = niyam;
+    user.phone = phone;
+    await user.save();
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, 'User Details Updated Successfully.'));
+  } catch (error) {
+    console.error('Error Updating User Details : ', error);
+    throw new ApiError(500, 'Internal Server Error.');
+  }
+});
+
+const GetStatsOfUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Get the start of the current month and the previous month
+    const currentMonthStart = moment().startOf('month');
+    const previousMonthStart = moment(currentMonthStart)
+      .subtract(1, 'month')
+      .startOf('month');
+
+    // Get the end of the current month and the previous month
+    const currentMonthEnd = moment().endOf('day');
+    const previousMonthEnd = moment(currentMonthStart)
+      .subtract(1, 'day')
+      .endOf('day');
+
+    // Generate series of dates for the current month and the previous month
+    const currentMonthDates = sequelize.literal(
+      `generate_series('${currentMonthStart.toISOString()}'::date, '${currentMonthEnd.toISOString()}'::date, '1 day'::interval)`
+    );
+    const previousMonthDates = sequelize.literal(
+      `generate_series('${previousMonthStart.toISOString()}'::date, '${previousMonthEnd.toISOString()}'::date, '1 day'::interval)`
+    );
+    console.log(currentMonthDates);
+    console.log(previousMonthDates);
+
+    // Retrieve day-wise mantralekhan data for the current month
+    const currentMonthMantralekhan = await Mantralekhan.findAll({
+      attributes: [
+        [sequelize.fn('date_trunc', 'day', sequelize.col('date')), 'date'],
+        [
+          sequelize.fn(
+            'COALESCE',
+            sequelize.fn('SUM', sequelize.col('count')),
+            0
+          ),
+          'mantraCount',
+        ],
+      ],
+      where: {
+        userId,
+        date: {
+          [Op.between]: [currentMonthStart, currentMonthEnd],
+        },
+      },
+      group: sequelize.fn('date_trunc', 'day', sequelize.col('date')),
+      right: true,
+      rightTable: currentMonthDates,
+    });
+
+    // Retrieve day-wise mantralekhan data for the previous month
+    const previousMonthMantralekhan = await Mantralekhan.findAll({
+      attributes: [
+        [sequelize.fn('date_trunc', 'day', sequelize.col('date')), 'date'],
+        [
+          sequelize.fn(
+            'COALESCE',
+            sequelize.fn('SUM', sequelize.col('count')),
+            0
+          ),
+          'mantraCount',
+        ],
+      ],
+      where: {
+        userId,
+        date: {
+          [Op.between]: [previousMonthStart, previousMonthEnd],
+        },
+      },
+      group: sequelize.fn('date_trunc', 'day', sequelize.col('date')),
+      right: true,
+      rightTable: previousMonthDates,
+    });
+
+    return res.status(200).json({
+      currentMonthMantralekhan,
+      previousMonthMantralekhan,
+    });
+  } catch (error) {
+    console.error('Error retrieving user stats:', error);
+    throw new ApiError(500, 'Internal Server Error.');
+  }
+});
+
 module.exports = {
   RegisterUser,
   LoginUser,
@@ -516,4 +690,7 @@ module.exports = {
   SignInWithGoogle,
   GetCountOfUsers,
   InviteFriend,
+  UploadProfilePicture,
+  UpdateUserDetails,
+  GetStatsOfUser,
 };

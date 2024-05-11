@@ -6,6 +6,7 @@ const ServerConfig = require('./config/server.config');
 const sendEmail = require('./utils/nodemailer.util');
 const session = require('express-session');
 const passport = require('passport');
+
 // Static Middlewares
 app.use(
   express.json({
@@ -36,6 +37,7 @@ app.use(
     saveUninitialized: true,
   })
 );
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -43,14 +45,14 @@ app.use(passport.session());
 const initPassport = require('./config/passport.config');
 initPassport(passport);
 
+const CLIENT_URL = 'http://localhost:3000/dashboard';
+
 // Google OAuth2 Login
 // This is hit when sign in with google button is pressed
 app.get(
   '/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
-
-const CLIENT_URL = 'http://localhost:3000/dashboard';
 
 // This route is called by the Google server (Not by us) Kind of a webhook
 app.get(
@@ -92,6 +94,7 @@ app.get('/logout', (req, res) => {
       res.status(500).json({ message: 'Internal Server Error' });
     } else {
       res.clearCookie('connect.sid');
+      res.clearCookie('accessToken');
       res.redirect('/');
     }
   });
@@ -99,13 +102,6 @@ app.get('/logout', (req, res) => {
 
 // API Routes
 const apiRouter = require('./routes/routes');
-
 app.use('/api', apiRouter);
-
-app.get('/verify', async (req, res) => {
-  const resp = await sendEmail();
-  console.log(resp);
-  res.json({ message: 'Email Sent' });
-});
 
 module.exports = app;

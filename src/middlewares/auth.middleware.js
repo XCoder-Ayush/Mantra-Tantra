@@ -20,9 +20,9 @@ const AuthMiddleware = asyncHandler(async (req, res, next) => {
 
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    if (decodedToken.id != userId) {
-      throw new ApiError(401, 'Unauthorized request!');
-    }
+    // if (decodedToken.id != userId) {
+    //   throw new ApiError(401, 'Unauthorized request!');
+    // }
 
     const user = await User.findOne({
       where: {
