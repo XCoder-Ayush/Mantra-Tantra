@@ -90,12 +90,12 @@ app.get('/login/failure', (req, res) => {
 app.get('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
-      console.error('Error destroying session:', err);
+      console.error('Error Destroying Session : ', err);
       res.status(500).json({ message: 'Internal Server Error' });
     } else {
       res.clearCookie('connect.sid');
       res.clearCookie('accessToken');
-      res.redirect('/');
+      res.status(200).json({ message: 'Logged Out Successfully' });
     }
   });
 });
