@@ -8,7 +8,7 @@ const Sequelize = require('sequelize');
 const moment = require('moment-timezone');
 
 const PostMantralekhan = asyncHandler(async (req, res) => {
-  const userId = req.params.userId;
+  const userId = req.body.id;
   console.log(userId);
   // Set the timezone to India (IST)
   const currentDate = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
@@ -50,7 +50,46 @@ const PostMantralekhan = asyncHandler(async (req, res) => {
     throw new ApiError(500, 'Internal Server Error.');
   }
 });
+const GetTopUsersToday = asyncHandler(async (req, res) => {
+  const currentDate = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
+  try {
+    const topUsers = await Mantralekhan.findAll({
+      attributes: ['userId', [Sequelize.literal('SUM("count")'), 'totalCount']],
+      where: {
+        date: {
+          [Op.gte]: currentDate,
+        },
+      },
+      group: ['userId'],
+      order: [[Sequelize.literal('SUM("count")'), 'DESC']], // Order by the sum of count in descending order
+      limit: 100, // Limit the result to 100 rows
+    });
 
+    // Here userId and totalCount is obtained. We need to add userProfilePic, user full name, member since.
+    let topUsersDto = [];
+
+    const promises = topUsers.map(async (topUser) => {
+      const user = await User.findByPk(topUser.userId);
+
+      topUsersDto.push({
+        totalCount: topUser.dataValues.totalCount,
+        fullName: user.fullName,
+        avatar: user.avatar,
+        memberSince: user.createdAt.toISOString().split('T')[0],
+      });
+    });
+
+    await Promise.all(promises);
+
+    // Sort by descending order count.
+    topUsersDto.sort((a, b) => b.totalCount - a.totalCount);
+
+    return res.status(200).json(new ApiResponse(200, topUsersDto));
+  } catch (error) {
+    console.error('Error Retrieving Top Users Of This Month.', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 const GetTopUsersAllTime = asyncHandler(async (req, res) => {
   try {
     const topUsers = await Mantralekhan.findAll({
@@ -68,7 +107,7 @@ const GetTopUsersAllTime = asyncHandler(async (req, res) => {
 
       topUsersDto.push({
         totalCount: topUser.dataValues.totalCount,
-        fullName: user.firstName + ' ' + user.lastName,
+        fullName: user.fullName,
         avatar: user.avatar,
         memberSince: user.createdAt.toISOString().split('T')[0],
       });
@@ -126,7 +165,7 @@ const GetTopUsersThisWeek = asyncHandler(async (req, res) => {
 
       topUsersDto.push({
         totalCount: topUser.dataValues.totalCount,
-        fullName: user.firstName + ' ' + user.lastName,
+        fullName: user.fullName,
         avatar: user.avatar,
         memberSince: user.createdAt.toISOString().split('T')[0],
       });
@@ -171,7 +210,7 @@ const GetTopUsersThisMonth = asyncHandler(async (req, res) => {
 
       topUsersDto.push({
         totalCount: topUser.dataValues.totalCount,
-        fullName: user.firstName + ' ' + user.lastName,
+        fullName: user.fullName,
         avatar: user.avatar,
         memberSince: user.createdAt.toISOString().split('T')[0],
       });
@@ -216,7 +255,7 @@ const GetTopUsersThisYear = asyncHandler(async (req, res) => {
 
       topUsersDto.push({
         totalCount: topUser.dataValues.totalCount,
-        fullName: user.firstName + ' ' + user.lastName,
+        fullName: user.fullName,
         avatar: user.avatar,
         memberSince: user.createdAt.toISOString().split('T')[0],
       });
@@ -234,10 +273,29 @@ const GetTopUsersThisYear = asyncHandler(async (req, res) => {
   }
 });
 
+const GetCountOfMantralekhan = asyncHandler(async (req, res) => {
+  try {
+    const result = await User.sum('mantraChanted');
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { count: result },
+          'Sum of Mantralekhan Retrieved Successfully.'
+        )
+      );
+  } catch (error) {
+    console.error('Error Fetching Sum of Mantralekhan:', error);
+    throw new ApiError(500, 'Internal Server Error.');
+  }
+});
 module.exports = {
   PostMantralekhan,
   GetTopUsersAllTime,
   GetTopUsersThisWeek,
   GetTopUsersThisMonth,
   GetTopUsersThisYear,
+  GetTopUsersToday,
+  GetCountOfMantralekhan,
 };

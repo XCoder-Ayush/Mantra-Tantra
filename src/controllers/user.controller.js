@@ -9,6 +9,12 @@ const crypto = require('crypto');
 const RegToken = require('../models/regtoken.model');
 const sendEmail = require('../utils/nodemailer.util');
 
+function generateRandomRegistrationToken() {
+  const buffer = crypto.randomBytes(32);
+  const token = buffer.toString('hex');
+  return token;
+}
+
 const generateAccessToken = async (userId) => {
   try {
     const user = await User.findOne({
@@ -31,12 +37,6 @@ const generateAccessToken = async (userId) => {
     );
   }
 };
-
-function generateRandomRegistrationToken() {
-  const buffer = crypto.randomBytes(32);
-  const token = buffer.toString('hex');
-  return token;
-}
 
 const SendVerificationLinkToUser = asyncHandler(async (req, res) => {
   const email = req.body.email;
@@ -136,10 +136,10 @@ const VerifyRegistrationToken = asyncHandler(async (req, res) => {
 });
 
 const RegisterUser = asyncHandler(async (req, res) => {
-  const { email, firstName, lastName, password, address, phone } = req.body;
-
+  const { email, fullName, password, address, phone } = req.body;
+  console.log('HERE');
   if (
-    [email, firstName, lastName, password, address, phone].some(
+    [email, fullName, password, address, phone].some(
       (field) => field?.trim() === ''
     )
   ) {
@@ -151,7 +151,7 @@ const RegisterUser = asyncHandler(async (req, res) => {
       [Op.or]: [{ phone: phone }, { email: email }],
     },
   });
-
+  console.log(existedUser);
   if (existedUser) {
     throw new ApiError(409, 'User with email or phone number already exists');
   }
@@ -171,8 +171,7 @@ const RegisterUser = asyncHandler(async (req, res) => {
   }
 
   const user = await User.create({
-    firstName,
-    lastName,
+    fullName,
     avatar: avatar.url,
     email,
     password,
@@ -214,6 +213,12 @@ const LoginUser = asyncHandler(async (req, res) => {
 
   if (!user) {
     throw new ApiError(404, 'User does not exist');
+  }
+  if (!user.password) {
+    throw new ApiError(
+      401,
+      'You have not set a password. Try to sign in with Google.'
+    );
   }
   console.log(user);
 
@@ -266,6 +271,7 @@ const LogoutUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .clearCookie('accessToken', options)
+    .clearCookie('connect.sid', options)
     .json(new ApiResponse(200, {}, 'User Logged Out'));
 });
 function generateRandomPassword() {
@@ -404,18 +410,41 @@ const ChangePassword = asyncHandler(async (req, res) => {
 const SignInWithGoogle = async (accessToken, refreshToken, profile, done) => {
   console.log(profile);
   try {
-    let user = await User.findByPk(profile.id);
+    const user = await User.findOne({
+      where: {
+        googleId: profile.id,
+      },
+    });
     console.log(accessToken);
     console.log(refreshToken);
     if (!user) {
-      const createdUser = await User.create({
-        id: profile.id,
-        fullName: profile.displayName,
-        email: profile.emails[0].value,
-        avatar: profile.photos[0].value,
+      // 2 Cases :
+      // Registered Manually
+      const checkUser = await User.findOne({
+        where: {
+          email: profile.emails[0].value,
+        },
       });
+      if (checkUser) {
+        const updatedUser = await checkUser.update({
+          googleId: profile.id,
+          fullName: profile.displayName,
+          email: profile.emails[0].value,
+        });
+        return done(null, updatedUser);
+      } else {
+        // First Time Register
+        // Sign Up With Google
+        const createdUser = await User.create({
+          googleId: profile.id,
+          fullName: profile.displayName,
+          email: profile.emails[0].value,
+          avatar: profile.photos[0].value,
+        });
 
-      console.log('New User Created ', createdUser);
+        console.log('New User Created ', createdUser);
+        return done(null, createdUser);
+      }
     }
 
     return done(null, user);
@@ -424,6 +453,58 @@ const SignInWithGoogle = async (accessToken, refreshToken, profile, done) => {
   }
 };
 
+const GetCountOfUsers = asyncHandler(async (req, res) => {
+  try {
+    const count = await User.count();
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { count },
+          'Count of Users Retrieved Successfully.'
+        )
+      );
+  } catch (error) {
+    console.error('Error Fetching Count of Users:', error);
+    throw new ApiError(500, 'Internal Server Error.');
+  }
+});
+
+const InviteFriend = asyncHandler(async (req, res) => {
+  const { id, name, email, comments } = req.body;
+
+  if (!name || !email || !comments) {
+    throw new ApiError(400, 'All fields are required.');
+  }
+
+  const user = await User.findOne({
+    where: {
+      id: id,
+    },
+  });
+
+  const subject = 'MantraTantra | Invitation To Join Our Community';
+
+  const htmlContent = `
+    <p>Hi ${name},</p>
+    <p>We'd like to invite you to join our community! Your friend has sent you this invitation. Here's what your friend has to say.</p>
+    <p>"${comments}"</p>
+    <p>Please click on the link below to join:</p>
+    <p><a href="https://localhost.3000/login">Join Now</a></p>
+    <p>Best Regards,</p>
+    <p>${user.fullName}</p>
+  `;
+  try {
+    await sendEmail(email, subject, htmlContent);
+    return res
+      .status(200)
+      .json(new ApiResponse(200, 'Invitation Sent Successfully.'));
+  } catch (error) {
+    console.error('Error Sending Email : ', error);
+    throw new ApiError(500, 'Internal Server Error.');
+  }
+});
 module.exports = {
   RegisterUser,
   LoginUser,
@@ -433,4 +514,6 @@ module.exports = {
   ForgotPassword,
   ChangePassword,
   SignInWithGoogle,
+  GetCountOfUsers,
+  InviteFriend,
 };

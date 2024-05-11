@@ -17,8 +17,15 @@ const User = sequelize.define(
   'User',
   {
     id: {
-      type: DataTypes.STRING,
+      type: DataTypes.UUID,
+      defaultValue: Sequelize.UUIDV4,
       primaryKey: true,
+    },
+    googleId: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: true,
+      field: 'google_id',
     },
     email: {
       type: DataTypes.STRING,

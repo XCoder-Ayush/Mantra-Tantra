@@ -24,7 +24,7 @@ const Testimonial = sequelize.define(
       allowNull: false,
     },
     userId: {
-      type: DataTypes.STRING,
+      type: DataTypes.UUID,
       allowNull: false,
       references: {
         model: 'users', // This should match the table name of the User model
@@ -33,6 +33,9 @@ const Testimonial = sequelize.define(
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
       field: 'user_id',
+    },
+    fullName: {
+      type: DataTypes.STRING,
     },
   },
   {

@@ -28,9 +28,7 @@ userRouter
   .route('/change-password')
   .patch(AuthMiddleware, UserController.ChangePassword);
 
-// userRouter.patch(
-//   '/change',
-//   AuthMiddleware,
-//   asyncHandler(UserController.ChangePassword)
-// );
+userRouter.route('/count').get(UserController.GetCountOfUsers);
+userRouter.route('/invite').post(AuthMiddleware, UserController.InviteFriend);
+
 module.exports = userRouter;

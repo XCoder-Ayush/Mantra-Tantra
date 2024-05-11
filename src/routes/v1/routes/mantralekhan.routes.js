@@ -4,8 +4,10 @@ const AuthMiddleware = require('../../../middlewares/auth.middleware');
 const MantralekhanController = require('../../../controllers/mantralekhan.controller');
 
 mantralekhanRouter
-  .route('/:userId')
-  .post(MantralekhanController.PostMantralekhan);
+  .route('/')
+  .post(AuthMiddleware, MantralekhanController.PostMantralekhan);
+
+mantralekhanRouter.route('/today').get(MantralekhanController.GetTopUsersToday);
 
 mantralekhanRouter
   .route('/week')
@@ -22,5 +24,9 @@ mantralekhanRouter
 mantralekhanRouter
   .route('/alltime')
   .get(MantralekhanController.GetTopUsersAllTime);
+
+mantralekhanRouter
+  .route('/count')
+  .get(MantralekhanController.GetCountOfMantralekhan);
 
 module.exports = mantralekhanRouter;

@@ -56,16 +56,24 @@ const CLIENT_URL = 'http://localhost:3000/dashboard';
 app.get(
   '/auth/google/callback',
   passport.authenticate('google', {
-    successRedirect: CLIENT_URL,
     failureRedirect: '/login/failure',
-  })
+  }),
+  (req, res) => {
+    const token = req.user.generateAccessToken();
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+    res.cookie('accessToken', token, options);
+    res.redirect(CLIENT_URL);
+  }
 );
 
 // Callback Route For Successfull Login User
 app.get('/login/success', (req, res) => {
   console.log('Session Data:', req.session);
   console.log(req.user);
-
+  // If user is successfully logged in, return user details
   if (!req.user) {
     res.redirect('/login/failure');
   }
