@@ -12,7 +12,14 @@ const AuthMiddleware = asyncHandler(async (req, res, next) => {
       req.cookies?.accessToken ||
       req.header('Authorization')?.replace('Bearer ', '');
 
-    // console.log(token);
+    console.log(req.cookies);
+    console.log(req.user);
+    console.log(req.session);
+
+    if (userId == req.user.id) {
+      console.log('Session Validated With connect.sid Parameter.');
+      return next();
+    }
 
     if (!token) {
       throw new ApiError(401, 'Unauthorized request!');

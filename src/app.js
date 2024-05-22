@@ -21,13 +21,22 @@ app.use(
   })
 );
 
-app.use(
-  cors({
-    origin: ServerConfig.CORS_ORIGIN,
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin: ServerConfig.CORS_ORIGIN,
+//     credentials: true,
+//   })
+// );
+
+const corsConfig = {
+  origin: true,
+  credentials: true,
+};
+
+app.use(cors(corsConfig));
+app.options('*', cors(corsConfig));
 app.use(express.static('public'));
+
 app.use(cookieParser());
 
 app.use(
@@ -45,7 +54,7 @@ app.use(passport.session());
 const initPassport = require('./config/passport.config');
 initPassport(passport);
 
-const CLIENT_URL = 'http://localhost:3000/dashboard';
+const CLIENT_URL = 'http://localhost:3000/mantrapage';
 
 // Google OAuth2 Login
 // This is hit when sign in with google button is pressed
@@ -62,11 +71,10 @@ app.get(
   }),
   (req, res) => {
     const token = req.user.generateAccessToken();
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
-    res.cookie('accessToken', token, options);
+    // const options = {
+    //   httpOnly: true,
+    // };
+    res.cookie('accessToken', token);
     res.redirect(CLIENT_URL);
   }
 );
