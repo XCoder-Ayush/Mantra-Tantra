@@ -12,11 +12,14 @@ const AuthMiddleware = asyncHandler(async (req, res, next) => {
       req.cookies?.accessToken ||
       req.header('Authorization')?.replace('Bearer ', '');
 
+    console.log(
+      'Cookies Here***********************************************************************'
+    );
     console.log(req.cookies);
     console.log(req.user);
     console.log(req.session);
 
-    if (userId == req.user.id) {
+    if (req.user) {
       console.log('Session Validated With connect.sid Parameter.');
       return next();
     }

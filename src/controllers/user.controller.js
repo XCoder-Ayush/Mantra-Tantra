@@ -429,6 +429,7 @@ const SignInWithGoogle = async (accessToken, refreshToken, profile, done) => {
         },
       });
       if (checkUser) {
+        // Already Registered Manually:
         const updatedUser = await checkUser.update({
           googleId: profile.id,
           fullName: profile.displayName,
@@ -438,14 +439,25 @@ const SignInWithGoogle = async (accessToken, refreshToken, profile, done) => {
       } else {
         // First Time Register
         // Sign Up With Google
+        const password = generateRandomPassword();
         const createdUser = await User.create({
           googleId: profile.id,
           fullName: profile.displayName,
           email: profile.emails[0].value,
           avatar: profile.photos[0].value,
+          password: password,
         });
 
         console.log('New User Created ', createdUser);
+        // Send Email:
+        await sendEmail(
+          email,
+          'Mantra Tantra | New Password',
+          `
+            <p>This is your new password. Use this to login to the website.</p>
+            <p>Password : <strong>${password}</strong></p>
+          `
+        );
         return done(null, createdUser);
       }
     }
