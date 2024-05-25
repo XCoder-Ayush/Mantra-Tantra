@@ -138,6 +138,40 @@ const VerifyRegistrationToken = asyncHandler(async (req, res) => {
     );
 });
 
+const GetUserById = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const user = await User.findOne({
+      where: {
+        id: userId,
+      },
+      attributes: {
+        exclude: ['password'],
+      },
+    });
+    return res.status(200).json(new ApiResponse(200, user));
+  } catch (error) {
+    throw new ApiError(500, 'Internal Server Error');
+  }
+});
+
+const GetUserByGoogleId = asyncHandler(async (req, res) => {
+  const { googleId } = req.params;
+  try {
+    const user = await User.findOne({
+      where: {
+        googleId: googleId,
+      },
+      attributes: {
+        exclude: ['password'],
+      },
+    });
+    return res.status(200).json(new ApiResponse(200, user));
+  } catch (error) {
+    throw new ApiError(500, 'Internal Server Error');
+  }
+});
+
 const RegisterUser = asyncHandler(async (req, res) => {
   const { email, fullName, password, address, phone } = req.body;
   console.log('HERE');
@@ -451,7 +485,7 @@ const SignInWithGoogle = async (accessToken, refreshToken, profile, done) => {
         console.log('New User Created ', createdUser);
         // Send Email:
         await sendEmail(
-          email,
+          profile.emails[0].value,
           'Mantra Tantra | New Password',
           `
             <p>This is your new password. Use this to login to the website.</p>
@@ -542,13 +576,19 @@ const UploadProfilePicture = asyncHandler(async (req, res) => {
     const newProfilePictureUrl = avatar.url;
 
     const oldProfilePictureUrl = user.avatar;
+
     console.log('HERE ', oldProfilePictureUrl);
-    // Delete the old profile picture from Cloudinary
-    if (oldProfilePictureUrl) {
-      const publicId = getPublicIdFromUrl(oldProfilePictureUrl);
-      console.log(publicId);
-      const resp = await cloudinary.uploader.destroy(publicId);
-      console.log(resp);
+
+    const parsedUrl = new URL(oldProfilePictureUrl);
+
+    if (!parsedUrl.hostname.includes('lh3.google')) {
+      // Delete the old profile picture from Cloudinary
+      if (oldProfilePictureUrl) {
+        const publicId = getPublicIdFromUrl(oldProfilePictureUrl);
+        console.log(publicId);
+        const resp = await cloudinary.uploader.destroy(publicId);
+        console.log(resp);
+      }
     }
 
     // Update user's profile picture URL with the new one
@@ -657,6 +697,26 @@ const GetStatsOfUser = asyncHandler(async (req, res) => {
       rightTable: currentMonthDates,
     });
 
+    const currentDateNumber = currentMonthEnd.date();
+
+    let currentMonthMantralekhanDto = [];
+
+    for (let date = 1; date <= currentDateNumber; date++) {
+      let mantraCount = 0;
+      currentMonthMantralekhan.forEach((mantraLekhan) => {
+        const mantraDate = moment(mantraLekhan.dataValues.date);
+        const currentDateNumber = mantraDate.date();
+        if (date === currentDateNumber) {
+          mantraCount = mantraLekhan.dataValues.mantraCount;
+          return;
+        }
+      });
+      currentMonthMantralekhanDto.push({
+        date: date,
+        mantraCount: Number(mantraCount),
+      });
+    }
+
     // Retrieve day-wise mantralekhan data for the previous month
     const previousMonthMantralekhan = await Mantralekhan.findAll({
       attributes: [
@@ -681,17 +741,128 @@ const GetStatsOfUser = asyncHandler(async (req, res) => {
       rightTable: previousMonthDates,
     });
 
-    return res.status(200).json({
-      currentMonthMantralekhan,
-      previousMonthMantralekhan,
-    });
+    let previousMonthMantralekhanDto = [];
+
+    const previousDateNumber = previousMonthEnd.date();
+
+    for (let date = 1; date <= previousDateNumber; date++) {
+      let mantraCount = 0;
+      previousMonthMantralekhan.forEach((mantraLekhan) => {
+        const mantraDate = moment(mantraLekhan.dataValues.date);
+        const currentDateNumber = mantraDate.date();
+        if (date === currentDateNumber) {
+          mantraCount = mantraLekhan.dataValues.mantraCount;
+          return;
+        }
+      });
+      previousMonthMantralekhanDto.push({
+        date: date,
+        mantraCount: Number(mantraCount),
+      });
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        currentMonthMantralekhanDto,
+        previousMonthMantralekhanDto,
+      })
+    );
   } catch (error) {
     console.error('Error retrieving user stats:', error);
     throw new ApiError(500, 'Internal Server Error.');
   }
 });
 
+const GetPerformanceOfUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const user = await User.findByPk(userId);
+
+    const currentDayStart = moment().startOf('day');
+    const currentDayEnd = moment().endOf('day');
+
+    const todayMantralekhan = await Mantralekhan.findOne({
+      attributes: [
+        [sequelize.fn('date_trunc', 'day', sequelize.col('date')), 'date'],
+        [
+          sequelize.fn(
+            'COALESCE',
+            sequelize.fn('SUM', sequelize.col('count')),
+            0
+          ),
+          'mantraCount',
+        ],
+      ],
+      where: {
+        userId,
+        date: {
+          [Op.between]: [currentDayStart.toDate(), currentDayEnd.toDate()],
+        },
+      },
+      group: sequelize.fn('date_trunc', 'day', sequelize.col('date')),
+    });
+
+    const weekStart = moment().startOf('week');
+
+    const weeklyMantralekhan = await Mantralekhan.findOne({
+      attributes: [
+        [
+          sequelize.fn(
+            'COALESCE',
+            sequelize.fn('SUM', sequelize.col('count')),
+            0
+          ),
+          'weeklyMantraCount',
+        ],
+      ],
+      where: {
+        userId,
+        date: {
+          [Op.between]: [weekStart.toDate(), currentDayEnd.toDate()],
+        },
+      },
+    });
+
+    const totalMantralekhan = await Mantralekhan.findOne({
+      attributes: [
+        [
+          sequelize.fn(
+            'COALESCE',
+            sequelize.fn('SUM', sequelize.col('count')),
+            0
+          ),
+          'totalMantraCount',
+        ],
+      ],
+      where: {
+        userId,
+      },
+    });
+
+    const performanceDto = {
+      fullName: user.fullName,
+      todayMantralekhan: todayMantralekhan
+        ? Number(todayMantralekhan.dataValues.mantraCount)
+        : 0,
+      weekMantralekhan: weeklyMantralekhan
+        ? Number(weeklyMantralekhan.dataValues.weeklyMantraCount)
+        : 0,
+      totalMantralekhan: totalMantralekhan
+        ? Number(totalMantralekhan.dataValues.totalMantraCount)
+        : 0,
+    };
+
+    return res.status(200).json(new ApiResponse(200, performanceDto));
+  } catch (error) {
+    console.error('Error Fetching User Performance.', error);
+    throw new ApiError(500, 'Internal Server Error.');
+  }
+});
+
 module.exports = {
+  GetUserById,
+  GetUserByGoogleId,
   RegisterUser,
   LoginUser,
   LogoutUser,
@@ -705,4 +876,5 @@ module.exports = {
   UploadProfilePicture,
   UpdateUserDetails,
   GetStatsOfUser,
+  GetPerformanceOfUser,
 };
