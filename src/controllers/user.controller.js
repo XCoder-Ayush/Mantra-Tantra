@@ -12,11 +12,11 @@ const Mantralekhan = require('../models/mantralekhan.model');
 const moment = require('moment-timezone');
 const sequelize = require('sequelize');
 
-function generateRandomRegistrationToken() {
+const generateRandomRegistrationToken = () => {
   const buffer = crypto.randomBytes(32);
   const token = buffer.toString('hex');
   return token;
-}
+};
 
 const generateAccessToken = async (userId) => {
   try {
@@ -586,7 +586,11 @@ const UploadProfilePicture = asyncHandler(async (req, res) => {
       if (oldProfilePictureUrl) {
         const publicId = getPublicIdFromUrl(oldProfilePictureUrl);
         console.log(publicId);
-        const resp = await cloudinary.uploader.destroy(publicId);
+        const resp = await cloudinary.api.delete_resources([`${publicId}`], {
+          type: 'upload',
+          resource_type: 'image',
+        });
+
         console.log(resp);
       }
     }

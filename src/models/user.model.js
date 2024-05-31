@@ -21,6 +21,7 @@ const User = sequelize.define(
       defaultValue: Sequelize.UUIDV4,
       primaryKey: true,
     },
+
     googleId: {
       type: DataTypes.STRING,
       unique: true,
@@ -72,6 +73,10 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: 0,
       field: 'mantra_chanted',
+    },
+    role: {
+      type: DataTypes.STRING,
+      defaultValue: 'ADMIN',
     },
   },
   {

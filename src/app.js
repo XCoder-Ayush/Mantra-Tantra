@@ -6,7 +6,7 @@ const ServerConfig = require('./config/server.config');
 const sendEmail = require('./utils/nodemailer.util');
 const session = require('express-session');
 const passport = require('passport');
-
+const morgan = require('morgan');
 // Static Middlewares
 app.use(
   express.json({
@@ -47,6 +47,7 @@ app.use(
   })
 );
 
+app.use(morgan('dev'));
 app.use(passport.initialize());
 app.use(passport.session());
 
