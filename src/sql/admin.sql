@@ -1,3 +1,5 @@
+-- Admin Insertion Explicitly
+
 INSERT INTO public."users" (
     "id",
     "google_id",

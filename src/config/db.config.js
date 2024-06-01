@@ -9,7 +9,6 @@ async function connectToDatabase() {
     database: ServerConfig.DB_NAME,
     port: ServerConfig.DB_PORT,
     host: ServerConfig.DB_HOST,
-    ssl: true,
   });
 
   try {

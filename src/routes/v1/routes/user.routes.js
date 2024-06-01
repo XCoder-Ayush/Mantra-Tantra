@@ -28,7 +28,7 @@ userRouter.route('/register').post(
 );
 
 userRouter.route('/login').post(UserController.LoginUser);
-userRouter.route('/logout').post(AuthMiddleware, UserController.LogoutUser);
+userRouter.route('/logout').get(AuthMiddleware, UserController.LogoutUser);
 userRouter.route('/forgot-password').patch(UserController.ForgotPassword);
 
 userRouter

@@ -12,6 +12,26 @@ const GetAllUsers = asyncHandler(async (req, res) => {
   }
 });
 
+const isLoggedIn = asyncHandler(async (req, res) => {
+  console.log('In Here');
+  console.log(req.session);
+
+  if (!req.session.user) {
+    // console.log('HERE');
+    return res.redirect('/api/v1/login/failure');
+  }
+  // return res.status(200).json({ user: req.session.user.dataValues });
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        req.session.user.dataValues,
+        'Admin User Is Logged In.'
+      )
+    );
+});
+
 const LoginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -57,11 +77,32 @@ const LoginAdmin = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, loggedInUser, 'Admin User Logged In Successfully')
+      new ApiResponse(
+        200,
+        loggedInUser.dataValues,
+        'Admin User Logged In Successfully'
+      )
     );
+});
+
+const LogoutAdmin = asyncHandler(async (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error Destroying Session : ', err);
+      throw new ApiError(500, 'Internal Server Error');
+    } else {
+      res.clearCookie('connect.sid');
+      res.clearCookie('accessToken');
+      return res
+        .status(200)
+        .json(new ApiResponse(200, 'Admin Logged Out Succesfully.'));
+    }
+  });
 });
 
 module.exports = {
   GetAllUsers,
   LoginAdmin,
+  isLoggedIn,
+  LogoutAdmin,
 };

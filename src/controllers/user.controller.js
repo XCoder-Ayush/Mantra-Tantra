@@ -298,19 +298,6 @@ const LoginUser = asyncHandler(async (req, res) => {
     );
 });
 
-const LogoutUser = asyncHandler(async (req, res) => {
-  // Task Is Only To Remove Access Token Cookie From Client:
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
-
-  return res
-    .status(200)
-    .clearCookie('accessToken', options)
-    .clearCookie('connect.sid', options)
-    .json(new ApiResponse(200, {}, 'User Logged Out'));
-});
 function generateRandomPassword() {
   const length = Math.floor(Math.random() * (16 - 8 + 1)) + 8; // Random length between 8 and 16
   const characters =
@@ -864,6 +851,36 @@ const GetPerformanceOfUser = asyncHandler(async (req, res) => {
   }
 });
 
+const LoginFailure = asyncHandler(async (req, res) => {
+  return res.status(401).json(new ApiResponse(401, 'Login Failed.'));
+});
+
+const isLoggedIn = asyncHandler(async (req, res) => {
+  console.log(req.user);
+
+  if (!req.user) {
+    return res.redirect('/api/v1/login/failure');
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, 'User Is Logged In.'));
+});
+
+const LogoutUser = asyncHandler(async (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error Destroying Session : ', err);
+      throw new ApiError(500, 'Internal Server Error');
+    } else {
+      res.clearCookie('connect.sid');
+      res.clearCookie('accessToken');
+      return res
+        .status(200)
+        .json(new ApiResponse(200, 'User Logged Out Succesfully.'));
+    }
+  });
+});
+
 module.exports = {
   GetUserById,
   GetUserByGoogleId,
@@ -881,4 +898,6 @@ module.exports = {
   UpdateUserDetails,
   GetStatsOfUser,
   GetPerformanceOfUser,
+  LoginFailure,
+  isLoggedIn,
 };
