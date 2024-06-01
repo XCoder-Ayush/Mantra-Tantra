@@ -2,14 +2,7 @@ const { Sequelize, DataTypes } = require('sequelize');
 const ServerConfig = require('../config/server.config');
 const User = require('./user.model');
 
-const sequelize = new Sequelize({
-  database: ServerConfig.DB_NAME,
-  username: ServerConfig.DB_USER,
-  password: ServerConfig.DB_PASSWORD,
-  host: ServerConfig.DB_HOST,
-  port: ServerConfig.DB_PORT,
-  dialect: 'postgres',
-});
+const sequelize = require('../config/sequelize.config');
 
 const Feedback = sequelize.define(
   'Feedback',

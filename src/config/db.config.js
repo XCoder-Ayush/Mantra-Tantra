@@ -4,6 +4,11 @@ const { Client } = require('pg');
 async function connectToDatabase() {
   const client = new Client({
     connectionString: ServerConfig.DB_URL,
+    user: ServerConfig.DB_USER,
+    password: ServerConfig.DB_PASSWORD,
+    database: ServerConfig.DB_NAME,
+    port: ServerConfig.DB_PORT,
+    host: ServerConfig.DB_HOST,
   });
 
   try {

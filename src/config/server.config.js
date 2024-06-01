@@ -20,6 +20,7 @@ const ServerConfig = {
   OAUTH2_CLIENT_SECRET: process.env.OAUTH2_CLIENT_SECRET,
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_PASSWORD: process.env.GMAIL_PASSWORD,
+  CLIENT_URL: process.env.CLIENT_URL,
 };
 
 module.exports = ServerConfig;
