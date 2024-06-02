@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npx nodemon src/server.js"
+    "dev": "cross-env NODE_ENV=development npx nodemon src/server.js",
+    "prod":"cross-env NODE_ENV=production node src/server.js"
   },
   "author": "Kuntal Saha",
   "license": "ISC",
@@ -30,6 +31,7 @@
     "sequelize": "^6.37.3"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.0",
     "prettier": "^3.2.5"
   }

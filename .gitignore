@@ -1,3 +1,5 @@
 node_modules
 plan.txt
 .env
+.env.production
+.env.development

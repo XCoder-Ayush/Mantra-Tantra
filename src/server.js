@@ -12,6 +12,7 @@ connectToDatabase()
     });
     app.listen(PORT, () => {
       console.log(`Server Started At ${PORT}`);
+      console.log(`Running in ${process.env.NODE_ENV} mode`);
     });
   })
   .catch((err) => {
