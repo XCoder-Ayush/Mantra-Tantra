@@ -8,6 +8,12 @@ const sequelize = new Sequelize({
   host: ServerConfig.DB_HOST,
   port: ServerConfig.DB_PORT,
   dialect: 'postgres',
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
 });
 
 module.exports = sequelize;
